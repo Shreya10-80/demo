@@ -1,0 +1,2693 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAAK-Guard Operations</title>
+    <style>
+        :root {
+            --bg: #060810;
+            --surface: #0b0e17;
+            --panel: #0e1120;
+            --border: #1a2035;
+            --border2: #242d45;
+            --cyan: #00d4ff;
+            --cyan-dim: rgba(0, 212, 255, 0.12);
+            --green: #00ff88;
+            --green-dim: rgba(0, 255, 136, 0.10);
+            --red: #ff3b3b;
+            --red-dim: rgba(255, 59, 59, 0.12);
+            --amber: #ffaa00;
+            --amber-dim: rgba(255, 170, 0, 0.10);
+            --text: #d8dff0;
+            --muted: #4a5568;
+            --mono: 'Courier New', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Topbar ── */
+        #topbar {
+            height: 48px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 20;
+        }
+
+        .logo {
+            font-family: var(--mono);
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--cyan);
+            white-space: nowrap;
+        }
+
+        .logo span {
+            color: var(--text);
+        }
+
+        .sys-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--green);
+        }
+
+        .blink {
+            animation: blink 1.4s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0
+            }
+        }
+
+        .top-chips {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .top-chip {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 1px;
+            padding: 4px 10px;
+            border: 1px solid;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .top-chip.c {
+            border-color: rgba(0, 212, 255, 0.4);
+            color: var(--cyan);
+        }
+
+        .top-chip.g {
+            border-color: rgba(0, 255, 136, 0.4);
+            color: var(--green);
+        }
+
+        .top-chip.r {
+            border-color: rgba(255, 59, 59, 0.5);
+            color: var(--red);
+            animation: pulse-border 1.5s infinite;
+        }
+
+        .top-chip.a {
+            border-color: rgba(255, 170, 0, 0.4);
+            color: var(--amber);
+        }
+
+        @keyframes pulse-border {
+
+            0%,
+            100% {
+                border-color: rgba(255, 59, 59, 0.5)
+            }
+
+            50% {
+                border-color: rgba(255, 59, 59, 1)
+            }
+        }
+
+        .clock {
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--text);
+            margin-left: 12px;
+            white-space: nowrap;
+        }
+
+        /* ── Nav tabs ── */
+        #nav {
+            display: flex;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+            gap: 0;
+            flex-shrink: 0;
+        }
+
+        .tab {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 10px 18px;
+            cursor: pointer;
+            color: var(--muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            color: var(--text);
+        }
+
+        .tab.active {
+            color: var(--cyan);
+            border-bottom-color: var(--cyan);
+        }
+
+        .tab .badge {
+            background: var(--red);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 2px;
+        }
+
+        /* ── Layout ── */
+        #workspace {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .section {
+            display: none;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .section.active {
+            display: flex;
+            animation: fade-in 0.2s ease;
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0
+            }
+
+            to {
+                opacity: 1
+            }
+        }
+
+        /* ═══════════ OPERATIONS ═══════════ */
+        #sec-overview {
+            flex-direction: row;
+        }
+
+        /* Left column */
+        #ov-left {
+            width: 300px;
+            min-width: 300px;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #sos-banner {
+            background: linear-gradient(135deg, rgba(255, 59, 59, 0.18), rgba(255, 59, 59, 0.06));
+            border-bottom: 1px solid rgba(255, 59, 59, 0.4);
+            padding: 16px;
+            flex-shrink: 0;
+        }
+
+        .sos-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .sos-ring {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--red);
+            box-shadow: 0 0 0 4px rgba(255, 59, 59, 0.25);
+            animation: sos-pulse 1.1s infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes sos-pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.6)
+            }
+
+            50% {
+                box-shadow: 0 0 0 8px rgba(255, 59, 59, 0)
+            }
+        }
+
+        .sos-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--red);
+            font-weight: 700;
+        }
+
+        .sos-device {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .sos-trigger {
+            font-size: 12px;
+            color: var(--amber);
+            margin-bottom: 6px;
+        }
+
+        .sos-coords {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--cyan);
+            background: rgba(0, 212, 255, 0.08);
+            padding: 4px 8px;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .sos-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-sos {
+            flex: 1;
+            padding: 10px;
+            background: var(--red);
+            color: #fff;
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.15s;
+        }
+
+        .btn-sos:hover {
+            background: #ff5f5f;
+        }
+
+        .btn-sec {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 1px;
+            border: 1px solid var(--border2);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-sec:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        #stat-strip {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .stat-cell {
+            padding: 14px 16px;
+            border-right: 1px solid var(--border);
+        }
+
+        .stat-cell:nth-child(2n) {
+            border-right: none;
+        }
+
+        .stat-cell:nth-child(3),
+        .stat-cell:nth-child(4) {
+            border-top: 1px solid var(--border);
+        }
+
+        .sc-label {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 1.5px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .sc-val {
+            font-family: var(--mono);
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .sc-sub {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        #feed {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        #feed::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        #feed::-webkit-scrollbar-thumb {
+            background: var(--border2);
+        }
+
+        .feed-header {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: var(--muted);
+            padding: 10px 16px 8px;
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+        }
+
+        .feed-item {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .feed-item:hover {
+            background: var(--panel);
+        }
+
+        .fi-time {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .fi-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-top: 3px;
+            flex-shrink: 0;
+        }
+
+        .fi-body {
+            flex: 1;
+        }
+
+        .fi-event {
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .fi-detail {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        #comms-strip {
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .comms-header {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: var(--muted);
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+        }
+
+        .comms-items {
+            display: flex;
+        }
+
+        .comms-item {
+            flex: 1;
+            padding: 10px 14px;
+            border-right: 1px solid var(--border);
+        }
+
+        .comms-item:last-child {
+            border-right: none;
+        }
+
+        .ci-name {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 1px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .ci-status {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .ci-chip {
+            font-size: 9px;
+            padding: 2px 5px;
+            margin-top: 3px;
+            display: inline-block;
+        }
+
+        .ci-chip.act {
+            background: rgba(0, 255, 136, 0.12);
+            color: var(--green);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .ci-chip.stby {
+            background: rgba(255, 170, 0, 0.10);
+            color: var(--amber);
+            border: 1px solid rgba(255, 170, 0, 0.25);
+        }
+
+        /* ── Map ── */
+        #map-wrap {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #map-toolbar {
+            height: 36px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .mt-btn {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 1px;
+            padding: 3px 10px;
+            background: transparent;
+            border: 1px solid var(--border2);
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .mt-btn:hover,
+        .mt-btn.on {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            background: var(--cyan-dim);
+        }
+
+        .mt-sep {
+            width: 1px;
+            height: 18px;
+            background: var(--border);
+        }
+
+        .mt-label {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 1.5px;
+            color: var(--muted);
+            margin-left: auto;
+        }
+
+        #map-canvas {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas#palantir {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #map-canvas::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.035) 2px, rgba(0, 0, 0, 0.035) 4px);
+            z-index: 1;
+        }
+
+        #map-canvas::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 50%, rgba(6, 8, 16, 0.7) 100%);
+            z-index: 2;
+        }
+
+        #map-hud-tl {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            z-index: 5;
+            background: rgba(6, 8, 16, 0.88);
+            border: 1px solid var(--border2);
+            padding: 12px 14px;
+            backdrop-filter: blur(4px);
+            min-width: 180px;
+        }
+
+        .hud-title {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .hud-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+
+        .hud-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .hud-key {
+            color: var(--muted);
+        }
+
+        .hud-val {
+            font-family: var(--mono);
+            font-weight: 600;
+        }
+
+        #map-hud-br {
+            position: absolute;
+            bottom: 14px;
+            right: 14px;
+            z-index: 5;
+            background: rgba(6, 8, 16, 0.88);
+            border: 1px solid var(--border2);
+            padding: 10px 14px;
+            backdrop-filter: blur(4px);
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            margin-bottom: 5px;
+        }
+
+        .legend-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-line {
+            width: 20px;
+            height: 1px;
+            flex-shrink: 0;
+            border-top: 1px dashed;
+        }
+
+        #device-popup {
+            position: absolute;
+            bottom: 14px;
+            left: 14px;
+            z-index: 6;
+            background: rgba(6, 8, 16, 0.95);
+            border: 1px solid var(--border2);
+            padding: 14px;
+            min-width: 220px;
+            backdrop-filter: blur(6px);
+            display: none;
+        }
+
+        .dp-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: var(--cyan);
+            margin-bottom: 8px;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .dp-close {
+            cursor: pointer;
+            color: var(--muted);
+        }
+
+        .dp-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+
+        .dp-key {
+            color: var(--muted);
+        }
+
+        .dp-val {
+            font-family: var(--mono);
+            font-weight: 600;
+        }
+
+        .dp-btns {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .dp-btn {
+            flex: 1;
+            padding: 7px;
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 1px;
+            border: 1px solid;
+            cursor: pointer;
+            background: transparent;
+            transition: all 0.15s;
+        }
+
+        .dp-btn.primary {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .dp-btn.primary:hover {
+            background: var(--red-dim);
+        }
+
+        .dp-btn.ghost {
+            border-color: var(--border2);
+            color: var(--muted);
+        }
+
+        .dp-btn.ghost:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        /* Right column */
+        #ov-right {
+            width: 260px;
+            min-width: 260px;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .rs-header {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: var(--muted);
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rs-action {
+            color: var(--cyan);
+            cursor: pointer;
+            font-size: 9px;
+        }
+
+        .trig-row {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .trig-row:last-child {
+            border-bottom: none;
+        }
+
+        .trig-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 11px;
+        }
+
+        .trig-name {
+            color: var(--muted);
+        }
+
+        .trig-pct {
+            font-family: var(--mono);
+            font-weight: 700;
+        }
+
+        .trig-bar {
+            height: 3px;
+            background: var(--border);
+        }
+
+        .trig-fill {
+            height: 100%;
+            transition: width 1.2s ease;
+        }
+
+        #fleet-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        #fleet-list::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        #fleet-list::-webkit-scrollbar-thumb {
+            background: var(--border2);
+        }
+
+        .fleet-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 16px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.12s;
+        }
+
+        .fleet-row:hover {
+            background: var(--panel);
+        }
+
+        .fr-id {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 700;
+            flex: 1;
+        }
+
+        .fr-bat {
+            font-family: var(--mono);
+            font-size: 10px;
+        }
+
+        .fr-path {
+            font-size: 10px;
+        }
+
+        .fr-status {
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        /* ═══════════ ALERTS ═══════════ */
+        #sec-alerts {
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px;
+            gap: 16px;
+        }
+
+        #sec-alerts::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #sec-alerts::-webkit-scrollbar-thumb {
+            background: var(--border2);
+        }
+
+        .alert-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 18px 20px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .alert-card.p1 {
+            border-left: 3px solid var(--red);
+        }
+
+        .alert-card.p2 {
+            border-left: 3px solid var(--amber);
+        }
+
+        .alert-sev {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .alert-device {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .alert-desc {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .alert-meta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .am-item {
+            font-family: var(--mono);
+            font-size: 10px;
+        }
+
+        .am-label {
+            color: var(--muted);
+        }
+
+        .am-val {
+            font-weight: 700;
+        }
+
+        .alert-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 130px;
+        }
+
+        .aa-btn {
+            padding: 9px 14px;
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 1px;
+            border: 1px solid;
+            cursor: pointer;
+            background: transparent;
+            transition: all 0.15s;
+            text-align: center;
+        }
+
+        .aa-btn.red {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        .aa-btn.red:hover {
+            background: var(--red-dim);
+        }
+
+        .aa-btn.cyan {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .aa-btn.cyan:hover {
+            background: var(--cyan-dim);
+        }
+
+        .aa-btn.ghost {
+            border-color: var(--border2);
+            color: var(--muted);
+        }
+
+        .aa-btn.ghost:hover {
+            border-color: var(--text);
+            color: var(--text);
+        }
+
+        .conf-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .cb-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cb-label {
+            font-size: 11px;
+            color: var(--muted);
+            min-width: 130px;
+        }
+
+        .cb-track {
+            flex: 1;
+            height: 4px;
+            background: var(--border);
+        }
+
+        .cb-fill {
+            height: 100%;
+        }
+
+        .cb-pct {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 700;
+            min-width: 35px;
+            text-align: right;
+        }
+
+        /* ═══════════ FORENSICS ═══════════ */
+        #sec-forensics {
+            flex-direction: row;
+            overflow: hidden;
+        }
+
+        #for-left {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        #for-left::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #for-left::-webkit-scrollbar-thumb {
+            background: var(--border2);
+        }
+
+        #for-right {
+            width: 300px;
+            border-left: 1px solid var(--border);
+            overflow-y: auto;
+        }
+
+        #for-right::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #for-right::-webkit-scrollbar-thumb {
+            background: var(--border2);
+        }
+
+        .section-label {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .cw-step {
+            display: flex;
+            gap: 14px;
+        }
+
+        .cw-line {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 14px;
+            flex-shrink: 0;
+        }
+
+        .cw-dot {
+            width: 10px;
+            height: 10px;
+            border: 2px solid var(--cyan);
+            background: var(--bg);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .cw-dot.done {
+            background: var(--cyan);
+        }
+
+        .cw-dot.red {
+            border-color: var(--red);
+            background: var(--red);
+        }
+
+        .cw-trail {
+            flex: 1;
+            width: 1px;
+            background: var(--border);
+            margin: 2px 0;
+            min-height: 24px;
+        }
+
+        .cw-body {
+            flex: 1;
+            padding-bottom: 18px;
+        }
+
+        .cw-event {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+
+        .cw-hash {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        .cw-time {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--border2);
+            margin-top: 3px;
+        }
+
+        .qr-panel {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .qr-inner {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+
+        .qr-svg-wrap {
+            background: #fff;
+            padding: 8px;
+            flex-shrink: 0;
+        }
+
+        .qi-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .qi-sub {
+            font-size: 11px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .qr-btn {
+            margin-top: 10px;
+            width: 100%;
+            padding: 8px;
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 1px;
+            background: transparent;
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            cursor: pointer;
+        }
+
+        .qr-btn:hover {
+            background: var(--cyan-dim);
+        }
+
+        .integrity-panel {
+            padding: 16px 20px;
+        }
+
+        .int-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+        }
+
+        .int-row:last-child {
+            border-bottom: none;
+        }
+
+        .int-key {
+            color: var(--muted);
+        }
+
+        .int-val {
+            font-family: var(--mono);
+            font-weight: 700;
+        }
+
+        /* ═══════════ AI ANALYSIS ═══════════ */
+        #sec-ai {
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px;
+            gap: 16px;
+        }
+
+        #sec-ai::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #sec-ai::-webkit-scrollbar-thumb {
+            background: var(--border2);
+        }
+
+        .ai-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 18px 20px;
+        }
+
+        .ai-tag {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: var(--cyan);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .ai-body {
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text);
+        }
+
+        .ai-footer {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        .ai-conf-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+        }
+
+        .ai-bar {
+            flex: 1;
+            height: 3px;
+            background: var(--border);
+        }
+
+        .ai-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--cyan), var(--green));
+        }
+
+        .ai-pct {
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--cyan);
+        }
+
+        .cluster-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .cluster-item {
+            background: var(--surface);
+            border: 1px solid rgba(255, 59, 59, 0.3);
+            padding: 12px;
+        }
+
+        .ci-inc {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .ci-type {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .ci-sim {
+            font-family: var(--mono);
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        /* ═══════════ DEVICES ═══════════ */
+        #sec-devices {
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #dev-topstrip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .dev-stat {
+            padding: 16px 20px;
+            border-right: 1px solid var(--border);
+        }
+
+        .dev-stat:last-child {
+            border-right: none;
+        }
+
+        .ds-label {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 1.5px;
+            color: var(--muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .ds-val {
+            font-family: var(--mono);
+            font-size: 26px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .ds-sub {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        #dev-table-wrap {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        #dev-table-wrap::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #dev-table-wrap::-webkit-scrollbar-thumb {
+            background: var(--border2);
+        }
+
+        .dev-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .dev-table th {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 10px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            position: sticky;
+            top: 0;
+            font-weight: 400;
+        }
+
+        .dev-table td {
+            padding: 11px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+        }
+
+        .dev-table tr:hover td {
+            background: var(--panel);
+        }
+
+        .mono {
+            font-family: var(--mono);
+        }
+
+        .bat-bar-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bat-bar {
+            width: 40px;
+            height: 6px;
+            background: var(--border);
+            position: relative;
+        }
+
+        .bat-fill {
+            position: absolute;
+            inset: 0;
+            right: auto;
+        }
+
+        /* ═══════════ SETTINGS ═══════════ */
+        #sec-settings {
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        #set-wrap {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            align-content: start;
+        }
+
+        #set-wrap::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #set-wrap::-webkit-scrollbar-thumb {
+            background: var(--border2);
+        }
+
+        .set-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 18px 20px;
+        }
+
+        .set-title {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+
+        .set-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+        }
+
+        .set-row:last-child {
+            border-bottom: none;
+        }
+
+        .sr-name {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .sr-desc {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .tog {
+            width: 36px;
+            height: 20px;
+            background: var(--border);
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .tog.on {
+            background: var(--cyan);
+        }
+
+        .tog::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            transition: transform 0.2s;
+        }
+
+        .tog.on::after {
+            transform: translateX(16px);
+        }
+
+        .sl-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .sl-val {
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--cyan);
+            min-width: 50px;
+            text-align: right;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100px;
+            height: 3px;
+            background: var(--border2);
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--cyan);
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- TOPBAR -->
+    <div id="topbar">
+        <div class="logo">SAAK<span>·</span>GUARD</div>
+        <div class="sys-status"><span class="blink">▮</span> SYSTEM NOMINAL</div>
+        <div class="top-chips">
+            <div class="top-chip r"><span>●</span> 2 SOS ACTIVE</div>
+            <div class="top-chip g"><span>●</span> LTE PRIMARY</div>
+            <div class="top-chip g"><span>●</span> LORA MESH</div>
+            <div class="top-chip a"><span>●</span> SAT STANDBY</div>
+            <div class="top-chip c"><span>●</span> AI ACTIVE</div>
+        </div>
+        <div class="clock" id="clock">—</div>
+    </div>
+
+    <!-- NAV -->
+    <div id="nav">
+        <div class="tab active" onclick="show('overview',this)">OPERATIONS</div>
+        <div class="tab" onclick="show('alerts',this)">ALERTS <span class="badge">2</span></div>
+        <div class="tab" onclick="show('forensics',this)">FORENSICS</div>
+        <div class="tab" onclick="show('ai',this)">AI ANALYSIS</div>
+        <div class="tab" onclick="show('devices',this)">DEVICES</div>
+        <div class="tab" onclick="show('settings',this)">SETTINGS</div>
+    </div>
+
+    <!-- WORKSPACE -->
+    <div id="workspace">
+
+        <!-- ═══ OPERATIONS ═══ -->
+        <div class="section active" id="sec-overview">
+            <!-- Left -->
+            <div id="ov-left">
+                <div id="sos-banner">
+                    <div class="sos-header">
+                        <div class="sos-ring"></div>
+                        <div class="sos-title">ACTIVE INCIDENT · INC-0189</div>
+                    </div>
+                    <div class="sos-device">SG-007</div>
+                    <div class="sos-trigger">⚡ IMU Snatch + Voice Keyword · 97% conf</div>
+                    <div class="sos-coords">28.6139°N 77.2090°E ±1.9m</div>
+                    <div class="sos-btns">
+                        <button class="btn-sos">DISPATCH</button>
+                        <button class="btn-sec">EVIDENCE</button>
+                    </div>
+                </div>
+                <div id="stat-strip">
+                    <div class="stat-cell">
+                        <div class="sc-label">SOS Active</div>
+                        <div class="sc-val" style="color:var(--red)">2</div>
+                        <div class="sc-sub">live incidents</div>
+                    </div>
+                    <div class="stat-cell">
+                        <div class="sc-label">Devices</div>
+                        <div class="sc-val" style="color:var(--cyan)">24</div>
+                        <div class="sc-sub">online · 3 offline</div>
+                    </div>
+                    <div class="stat-cell">
+                        <div class="sc-label">Evidence</div>
+                        <div class="sc-val" style="color:var(--green)">147</div>
+                        <div class="sc-sub">encrypted clips</div>
+                    </div>
+                    <div class="stat-cell">
+                        <div class="sc-label">Encrypt Lag</div>
+                        <div class="sc-val" style="color:var(--cyan)">8<span style="font-size:14px">ms</span></div>
+                        <div class="sc-sub">SLA &lt;10ms ✓</div>
+                    </div>
+                </div>
+                <div id="feed">
+                    <div class="feed-header">ACTIVITY FEED</div>
+                    <div class="feed-item">
+                        <div class="fi-time">14:32:07</div>
+                        <div class="fi-dot" style="background:var(--red)"></div>
+                        <div class="fi-body">
+                            <div class="fi-event">SOS — SG-007</div>
+                            <div class="fi-detail">IMU snatch + voice · LTE streaming</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="fi-time">14:30:52</div>
+                        <div class="fi-dot" style="background:var(--green)"></div>
+                        <div class="fi-body">
+                            <div class="fi-event">Evidence secured · SG-003</div>
+                            <div class="fi-detail">SHA-256 verified · chain intact</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="fi-time">14:28:40</div>
+                        <div class="fi-dot" style="background:var(--amber)"></div>
+                        <div class="fi-body">
+                            <div class="fi-event">SOS — SG-019</div>
+                            <div class="fi-detail">Pinch 1500ms · LoRa failover active</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="fi-time">14:28:11</div>
+                        <div class="fi-dot" style="background:var(--amber)"></div>
+                        <div class="fi-body">
+                            <div class="fi-event">LoRa failover · SG-019</div>
+                            <div class="fi-detail">LTE loss · switching to SX1262</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="fi-time">14:22:44</div>
+                        <div class="fi-dot" style="background:var(--cyan)"></div>
+                        <div class="fi-body">
+                            <div class="fi-event">AI cluster alert · Zone A</div>
+                            <div class="fi-detail">pgvector sim ≥0.91 · 4 incidents matched</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="fi-time">14:15:30</div>
+                        <div class="fi-dot" style="background:var(--green)"></div>
+                        <div class="fi-body">
+                            <div class="fi-event">Device provisioned · SG-024</div>
+                            <div class="fi-detail">Firmware v2.4.1 · GPS ±1.8m</div>
+                        </div>
+                    </div>
+                    <div class="feed-item">
+                        <div class="fi-time">14:08:19</div>
+                        <div class="fi-dot" style="background:var(--green)"></div>
+                        <div class="fi-body">
+                            <div class="fi-event">Evidence uploaded · SG-001</div>
+                            <div class="fi-detail">ECDSA-P256 signed · court-ready</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="comms-strip">
+                    <div class="comms-header">COMMS STATUS</div>
+                    <div class="comms-items">
+                        <div class="comms-item">
+                            <div class="ci-name">LTE · SIM7600G-H</div>
+                            <div class="ci-status"><span style="color:var(--green)">●</span> PRIMARY</div>
+                            <div class="ci-chip act">ACTIVE</div>
+                        </div>
+                        <div class="comms-item">
+                            <div class="ci-name">LORA · SX1262</div>
+                            <div class="ci-status"><span style="color:var(--green)">●</span> MESH</div>
+                            <div class="ci-chip act">ACTIVE</div>
+                        </div>
+                        <div class="comms-item">
+                            <div class="ci-name">SAT · CC660D-LS</div>
+                            <div class="ci-status"><span style="color:var(--amber)">●</span> STANDBY</div>
+                            <div class="ci-chip stby">STANDBY</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div id="map-wrap">
+                <div id="map-toolbar">
+                    <button class="mt-btn on" id="btn-heatmap" onclick="toggleLayer('heatmap',this)">HEATMAP</button>
+                    <button class="mt-btn on" id="btn-mesh" onclick="toggleLayer('mesh',this)">LORA MESH</button>
+                    <button class="mt-btn on" id="btn-trails" onclick="toggleLayer('trails',this)">TRAILS</button>
+                    <div class="mt-sep"></div>
+                    <button class="mt-btn" onclick="">CENTER</button>
+                    <div class="mt-label" id="cursor-coords">HOVER MAP FOR COORDS</div>
+                </div>
+                <div id="map-canvas">
+                    <canvas id="palantir"></canvas>
+                    <div id="map-hud-tl">
+                        <div class="hud-title">ZONE STATUS</div>
+                        <div class="hud-row"><span class="hud-key">Zone A — Central</span><span class="hud-val"
+                                style="color:var(--red)">1 SOS</span></div>
+                        <div class="hud-row"><span class="hud-key">Zone B — East</span><span class="hud-val"
+                                style="color:var(--amber)">1 ALERT</span></div>
+                        <div class="hud-row"><span class="hud-key">Zone C — North</span><span class="hud-val"
+                                style="color:var(--green)">CLEAR</span></div>
+                        <div class="hud-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+                            <span class="hud-key">Mesh Nodes</span><span class="hud-val"
+                                style="color:var(--cyan)">24</span></div>
+                        <div class="hud-row"><span class="hud-key">LoRa Coverage</span><span class="hud-val">5
+                                km²</span></div>
+                    </div>
+                    <div id="map-hud-br">
+                        <div class="legend-row">
+                            <div class="legend-dot" style="background:var(--red)"></div>SOS Active
+                        </div>
+                        <div class="legend-row">
+                            <div class="legend-dot" style="background:var(--amber)"></div>Alert
+                        </div>
+                        <div class="legend-row">
+                            <div class="legend-dot" style="background:var(--cyan)"></div>Online
+                        </div>
+                        <div class="legend-row">
+                            <div class="legend-dot" style="background:var(--muted)"></div>Offline
+                        </div>
+                        <div class="legend-row">
+                            <div class="legend-line" style="border-color:rgba(0,212,255,0.5)"></div>LoRa Range
+                        </div>
+                        <div class="legend-row">
+                            <div class="legend-line" style="border-color:rgba(0,212,255,0.4);border-style:dotted"></div>
+                            Movement
+                        </div>
+                    </div>
+                    <div id="device-popup">
+                        <div class="dp-title"><span id="dp-id">—</span><span class="dp-close"
+                                onclick="document.getElementById('device-popup').style.display='none'">✕</span></div>
+                        <div class="dp-row"><span class="dp-key">Status</span><span class="dp-val"
+                                id="dp-status">—</span></div>
+                        <div class="dp-row"><span class="dp-key">Battery</span><span class="dp-val" id="dp-bat">—</span>
+                        </div>
+                        <div class="dp-row"><span class="dp-key">Comms</span><span class="dp-val" id="dp-comms">—</span>
+                        </div>
+                        <div class="dp-row"><span class="dp-key">GPS</span><span class="dp-val" id="dp-gps">—</span>
+                        </div>
+                        <div class="dp-row"><span class="dp-key">Last Seen</span><span class="dp-val"
+                                id="dp-time">—</span></div>
+                        <div class="dp-btns">
+                            <button class="dp-btn primary" id="dp-sos-btn">DISPATCH</button>
+                            <button class="dp-btn ghost">DETAILS</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right -->
+            <div id="ov-right">
+                <div class="rs-header">TRIGGERS (24H)</div>
+                <div class="trig-row">
+                    <div class="trig-header"><span class="trig-name">Capacitive Pinch</span><span class="trig-pct"
+                            style="color:var(--cyan)">50%</span></div>
+                    <div class="trig-bar">
+                        <div class="trig-fill" style="width:50%;background:var(--cyan)"></div>
+                    </div>
+                </div>
+                <div class="trig-row">
+                    <div class="trig-header"><span class="trig-name">IMU Anomaly</span><span class="trig-pct"
+                            style="color:var(--green)">33%</span></div>
+                    <div class="trig-bar">
+                        <div class="trig-fill" style="width:33%;background:var(--green)"></div>
+                    </div>
+                </div>
+                <div class="trig-row" style="border-bottom:1px solid var(--border)">
+                    <div class="trig-header"><span class="trig-name">Voice Keyword</span><span class="trig-pct"
+                            style="color:var(--amber)">17%</span></div>
+                    <div class="trig-bar">
+                        <div class="trig-fill" style="width:17%;background:var(--amber)"></div>
+                    </div>
+                </div>
+                <div class="rs-header" style="margin-top:0"><span>DEVICE FLEET</span><span class="rs-action"
+                        onclick="show('devices',document.querySelectorAll('.tab')[4])">ALL →</span></div>
+                <div id="fleet-list"></div>
+            </div>
+        </div>
+
+        <!-- ═══ ALERTS ═══ -->
+        <div class="section" id="sec-alerts">
+            <div class="alert-card p1">
+                <div style="flex:1">
+                    <div class="alert-sev" style="color:var(--red)">● PRIORITY 1 · INC-2024-0189</div>
+                    <div class="alert-device">SG-007 — Zone A Central</div>
+                    <div class="alert-desc">Dual-trigger SOS: IMU snatch pattern and voice keyword fired simultaneously,
+                        closing the activation gap. Subject stationary. Audio streaming live via LTE. LoRa mirror
+                        confirmed on 3 nodes within 5 km.</div>
+                    <div class="alert-meta">
+                        <div class="am-item"><span class="am-label">TIME </span><span class="am-val">14:32:07</span>
+                        </div>
+                        <div class="am-item"><span class="am-label">GPS </span><span class="am-val"
+                                style="color:var(--cyan)">28.6139°N 77.2090°E</span></div>
+                        <div class="am-item"><span class="am-label">PATH </span><span class="am-val"
+                                style="color:var(--cyan)">LTE</span></div>
+                        <div class="am-item"><span class="am-label">HAPTIC </span><span class="am-val"
+                                style="color:var(--green)">CONFIRMED</span></div>
+                        <div class="am-item"><span class="am-label">ENCRYPT </span><span class="am-val">8ms ·
+                                AES-256-CTR</span></div>
+                    </div>
+                    <div class="conf-bars" style="margin-top:14px">
+                        <div class="cb-row"><span class="cb-label">IMU Snatch Pattern</span>
+                            <div class="cb-track">
+                                <div class="cb-fill" style="width:97%;background:var(--red)"></div>
+                            </div><span class="cb-pct" style="color:var(--red)">97%</span>
+                        </div>
+                        <div class="cb-row"><span class="cb-label">Voice Keyword (1D-CNN)</span>
+                            <div class="cb-track">
+                                <div class="cb-fill" style="width:94%;background:var(--red)"></div>
+                            </div><span class="cb-pct" style="color:var(--red)">94%</span>
+                        </div>
+                        <div class="cb-row"><span class="cb-label">Capacitive Pinch</span>
+                            <div class="cb-track">
+                                <div class="cb-fill" style="width:0%;background:var(--muted)"></div>
+                            </div><span class="cb-pct" style="color:var(--muted)">—</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="alert-actions">
+                    <button class="aa-btn red">DISPATCH</button>
+                    <button class="aa-btn cyan">EVIDENCE</button>
+                    <button class="aa-btn ghost">FORENSICS</button>
+                    <button class="aa-btn ghost">RESOLVE</button>
+                </div>
+            </div>
+            <div class="alert-card p2">
+                <div style="flex:1">
+                    <div class="alert-sev" style="color:var(--amber)">● PRIORITY 2 · INC-2024-0188</div>
+                    <div class="alert-device">SG-019 — Zone B East</div>
+                    <div class="alert-desc">Capacitive pinch sustained 1500ms. LTE signal lost — LoRa SX1262 failover
+                        engaged. Audio recording active in stealth mode. Haptic delivery confirmed.</div>
+                    <div class="alert-meta">
+                        <div class="am-item"><span class="am-label">TIME </span><span class="am-val">14:28:40</span>
+                        </div>
+                        <div class="am-item"><span class="am-label">GPS </span><span class="am-val"
+                                style="color:var(--cyan)">28.6201°N 77.2155°E</span></div>
+                        <div class="am-item"><span class="am-label">PATH </span><span class="am-val"
+                                style="color:var(--amber)">LORA FAILOVER</span></div>
+                        <div class="am-item"><span class="am-label">BATTERY </span><span class="am-val"
+                                style="color:var(--amber)">22%</span></div>
+                    </div>
+                    <div class="conf-bars" style="margin-top:14px">
+                        <div class="cb-row"><span class="cb-label">Capacitive Pinch</span>
+                            <div class="cb-track">
+                                <div class="cb-fill" style="width:100%;background:var(--amber)"></div>
+                            </div><span class="cb-pct" style="color:var(--amber)">TRIG</span>
+                        </div>
+                        <div class="cb-row"><span class="cb-label">IMU Pattern</span>
+                            <div class="cb-track">
+                                <div class="cb-fill" style="width:62%;background:var(--amber)"></div>
+                            </div><span class="cb-pct" style="color:var(--amber)">62%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="alert-actions">
+                    <button class="aa-btn red">DISPATCH</button>
+                    <button class="aa-btn cyan">EVIDENCE</button>
+                    <button class="aa-btn ghost">FORENSICS</button>
+                    <button class="aa-btn ghost">RESOLVE</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ FORENSICS ═══ -->
+        <div class="section" id="sec-forensics">
+            <div id="for-left">
+                <div class="section-label">CHAIN OF CUSTODY · INC-2024-0189</div>
+                <div class="cw-step">
+                    <div class="cw-line">
+                        <div class="cw-dot red"></div>
+                        <div class="cw-trail"></div>
+                    </div>
+                    <div class="cw-body">
+                        <div class="cw-event" style="color:var(--red)">SOS Triggered</div>
+                        <div class="cw-hash">Event: IMU_SNATCH + VOICE_KEYWORD · Device: SG-007 · Firmware: v2.4.1</div>
+                        <div class="cw-time">14:32:07.004 UTC+05:30</div>
+                    </div>
+                </div>
+                <div class="cw-step">
+                    <div class="cw-line">
+                        <div class="cw-dot done"></div>
+                        <div class="cw-trail"></div>
+                    </div>
+                    <div class="cw-body">
+                        <div class="cw-event">AES-256-CTR Encryption</div>
+                        <div class="cw-hash">Key: ephemeral ECDH P-256 · IV: random 96-bit nonce · Latency: 8ms (SLA ✓)
+                        </div>
+                        <div class="cw-time">14:32:07.012 UTC+05:30</div>
+                    </div>
+                </div>
+                <div class="cw-step">
+                    <div class="cw-line">
+                        <div class="cw-dot done"></div>
+                        <div class="cw-trail"></div>
+                    </div>
+                    <div class="cw-body">
+                        <div class="cw-event">SHA-256 Hash</div>
+                        <div class="cw-hash">a3f9b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1</div>
+                        <div class="cw-time">14:32:07.015 UTC+05:30</div>
+                    </div>
+                </div>
+                <div class="cw-step">
+                    <div class="cw-line">
+                        <div class="cw-dot done"></div>
+                        <div class="cw-trail"></div>
+                    </div>
+                    <div class="cw-body">
+                        <div class="cw-event">LTE Upload · FastAPI</div>
+                        <div class="cw-hash">Stream confirmed · 2.1 Mbps · TLS 1.3 · Server: saak-guard.cloud</div>
+                        <div class="cw-time">14:32:07.890 UTC+05:30</div>
+                    </div>
+                </div>
+                <div class="cw-step">
+                    <div class="cw-line">
+                        <div class="cw-dot done"></div>
+                        <div class="cw-trail"></div>
+                    </div>
+                    <div class="cw-body">
+                        <div class="cw-event">LoRa Mesh Mirror</div>
+                        <div class="cw-hash">Mirrored to: SG-012, SG-003, SG-001 (within 5 km) · 34-byte SOS beacon
+                        </div>
+                        <div class="cw-time">14:32:37.100 UTC+05:30</div>
+                    </div>
+                </div>
+                <div class="cw-step">
+                    <div class="cw-line">
+                        <div class="cw-dot done"></div>
+                        <div class="cw-trail"></div>
+                    </div>
+                    <div class="cw-body">
+                        <div class="cw-event">ECDSA-P256 Signature</div>
+                        <div class="cw-hash">
+                            3046022100a3f9b2c1d4e5f6a7b8c9d0e1f2a3b4c5022100d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1</div>
+                        <div class="cw-time">14:32:37.240 UTC+05:30</div>
+                    </div>
+                </div>
+                <div class="cw-step">
+                    <div class="cw-line">
+                        <div class="cw-dot done" style="border-color:var(--green);background:var(--green)"></div>
+                    </div>
+                    <div class="cw-body">
+                        <div class="cw-event" style="color:var(--green)">pgvector Indexed</div>
+                        <div class="cw-hash">Pattern embedded · similarity search enabled · cluster scored</div>
+                        <div class="cw-time">14:32:37.610 UTC+05:30</div>
+                    </div>
+                </div>
+            </div>
+            <div id="for-right">
+                <div class="qr-panel">
+                    <div class="rs-header"
+                        style="padding:0 0 12px;border-bottom:1px solid var(--border);margin-bottom:14px">QR EVIDENCE
+                        PACKAGE</div>
+                    <div class="qr-inner">
+                        <div class="qr-svg-wrap">
+                            <svg width="80" height="80" viewBox="0 0 80 80">
+                                <rect width="80" height="80" fill="white" />
+                                <rect x="5" y="5" width="30" height="30" fill="none" stroke="#000" stroke-width="3" />
+                                <rect x="11" y="11" width="18" height="18" fill="#000" />
+                                <rect x="45" y="5" width="30" height="30" fill="none" stroke="#000" stroke-width="3" />
+                                <rect x="51" y="11" width="18" height="18" fill="#000" />
+                                <rect x="5" y="45" width="30" height="30" fill="none" stroke="#000" stroke-width="3" />
+                                <rect x="11" y="51" width="18" height="18" fill="#000" />
+                                <rect x="45" y="45" width="6" height="6" fill="#000" />
+                                <rect x="53" y="45" width="6" height="6" fill="#000" />
+                                <rect x="61" y="45" width="6" height="6" fill="#000" />
+                                <rect x="45" y="53" width="6" height="6" fill="#000" />
+                                <rect x="61" y="53" width="6" height="6" fill="#000" />
+                                <rect x="45" y="61" width="6" height="6" fill="#000" />
+                                <rect x="53" y="61" width="6" height="6" fill="#000" />
+                                <rect x="61" y="61" width="6" height="6" fill="#000" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="qi-title">INC-2024-0189</div>
+                            <div class="qi-sub">SHA-256 + ECDSA-P256<br>Court-admissible<br>Section 65B IEA</div>
+                            <button class="qr-btn">DOWNLOAD PDF</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="integrity-panel">
+                    <div class="rs-header"
+                        style="padding:0 0 10px;border-bottom:1px solid var(--border);margin-bottom:10px">INTEGRITY
+                        CHECK</div>
+                    <div class="int-row"><span class="int-key">Hash Match</span><span class="int-val"
+                            style="color:var(--green)">VERIFIED ✓</span></div>
+                    <div class="int-row"><span class="int-key">Signature</span><span class="int-val"
+                            style="color:var(--green)">VALID ✓</span></div>
+                    <div class="int-row"><span class="int-key">Tamper</span><span class="int-val"
+                            style="color:var(--green)">NONE ✓</span></div>
+                    <div class="int-row"><span class="int-key">Mirror Copies</span><span class="int-val"
+                            style="color:var(--cyan)">3 NODES</span></div>
+                    <div class="int-row"><span class="int-key">Encrypt Latency</span><span class="int-val"
+                            style="color:var(--cyan)">8ms</span></div>
+                    <div class="int-row"><span class="int-key">Chain Steps</span><span class="int-val">7 / 7</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ AI ANALYSIS ═══ -->
+        <div class="section" id="sec-ai">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="ai-card">
+                    <div class="ai-tag">✦ CLAUDE AI — FIRST RESPONDER BRIEF · INC-0189</div>
+                    <div class="ai-body">At <strong>14:32 local time</strong>, device SG-007 registered a simultaneous
+                        IMU snatch (97%) and voice keyword match (94%), triggering the dual-sensor SOS path. The subject
+                        is stationary at <strong>28.6139°N, 77.2090°E</strong> in Zone A. Audio streaming live via LTE.
+                        Three nearby nodes have mirrored the evidence over LoRa. Haptic confirmed — subject knows help
+                        is coming. <strong>Recommend immediate dispatch.</strong></div>
+                    <div class="ai-footer"><span class="ai-conf-label">MODEL CONFIDENCE</span>
+                        <div class="ai-bar">
+                            <div class="ai-bar-fill" style="width:96%"></div>
+                        </div><span class="ai-pct">96%</span>
+                    </div>
+                </div>
+                <div class="ai-card">
+                    <div class="ai-tag">✦ CLAUDE AI — COURT REPORT · INC-0189</div>
+                    <div class="ai-body"><strong>INCIDENT REPORT — Case No. INC-2024-0189.</strong> Device SG-007
+                        (ESP32S3-A7F2) initiated emergency protocol at 14:32:07 UTC+5:30. Evidence captured under
+                        AES-256-CTR with 8ms post-trigger latency. Full chain-of-custody: trigger → encrypt → SHA-256
+                        (a3f9…f0a1) → LTE upload → LoRa mirror (3 nodes) → ECDSA-P256 signature. Package is
+                        court-admissible per <strong>Section 65B, Indian Evidence Act</strong>.</div>
+                    <div class="ai-footer"><span class="ai-conf-label">MODEL CONFIDENCE</span>
+                        <div class="ai-bar">
+                            <div class="ai-bar-fill" style="width:99%"></div>
+                        </div><span class="ai-pct">99%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="ai-card">
+                <div class="ai-tag">⚠ PGVECTOR CLUSTER ALERT — ZONE A · 14:00–14:35</div>
+                <div style="font-size:13px;color:var(--text);margin-bottom:4px">Similarity search identified <strong>4
+                        incidents</strong> within Zone A in a 35-minute window, all matching snatch + audio distress
+                    pattern. Cosine similarity ≥ 0.91. Possible coordinated activity.</div>
+                <div class="cluster-grid">
+                    <div class="cluster-item">
+                        <div class="ci-inc">INC-0189 · SG-007</div>
+                        <div class="ci-type" style="color:var(--red)">Snatch + Voice</div>
+                        <div class="ci-sim" style="color:var(--red)">sim: 1.000</div>
+                    </div>
+                    <div class="cluster-item">
+                        <div class="ci-inc">INC-0185 · SG-001</div>
+                        <div class="ci-type" style="color:var(--amber)">Snatch</div>
+                        <div class="ci-sim" style="color:var(--amber)">sim: 0.940</div>
+                    </div>
+                    <div class="cluster-item">
+                        <div class="ci-inc">INC-0183 · SG-012</div>
+                        <div class="ci-type" style="color:var(--amber)">IMU Fall</div>
+                        <div class="ci-sim" style="color:var(--amber)">sim: 0.912</div>
+                    </div>
+                    <div class="cluster-item">
+                        <div class="ci-inc">INC-0179 · SG-003</div>
+                        <div class="ci-type" style="color:var(--cyan)">Voice Only</div>
+                        <div class="ci-sim" style="color:var(--cyan)">sim: 0.910</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ DEVICES ═══ -->
+        <div class="section" id="sec-devices">
+            <div id="dev-topstrip">
+                <div class="dev-stat">
+                    <div class="ds-label">Total Fleet</div>
+                    <div class="ds-val" style="color:var(--cyan)">27</div>
+                    <div class="ds-sub">24 online · 3 offline</div>
+                </div>
+                <div class="dev-stat">
+                    <div class="ds-label">SOS Active</div>
+                    <div class="ds-val" style="color:var(--red)">2</div>
+                    <div class="ds-sub">INC-0189, INC-0188</div>
+                </div>
+                <div class="dev-stat">
+                    <div class="ds-label">Avg Battery</div>
+                    <div class="ds-val" style="color:var(--green)">74%</div>
+                    <div class="ds-sub">2 devices &lt;20%</div>
+                </div>
+                <div class="dev-stat">
+                    <div class="ds-label">Firmware</div>
+                    <div class="ds-val" style="color:var(--cyan)">v2.4.1</div>
+                    <div class="ds-sub">22 current · 5 pending</div>
+                </div>
+            </div>
+            <div id="dev-table-wrap">
+                <table class="dev-table">
+                    <thead>
+                        <tr>
+                            <th>DEVICE ID</th>
+                            <th>STATUS</th>
+                            <th>BATTERY</th>
+                            <th>COMMS PATH</th>
+                            <th>GPS ACCURACY</th>
+                            <th>FIRMWARE</th>
+                            <th>LAST SEEN</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dev-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ═══ SETTINGS ═══ -->
+        <div class="section" id="sec-settings">
+            <div id="set-wrap">
+                <div class="set-card">
+                    <div class="set-title">TRIGGER THRESHOLDS</div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">Pinch Hold Duration</div>
+                            <div class="sr-desc">Capacitive touch sustained HIGH</div>
+                        </div>
+                        <div class="sl-wrap"><input type="range" min="500" max="3000" value="1500"
+                                oninput="this.nextElementSibling.textContent=this.value+'ms'"><span
+                                class="sl-val">1500ms</span></div>
+                    </div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">CNN Confidence Threshold</div>
+                            <div class="sr-desc">1D-CNN minimum to trigger SOS</div>
+                        </div>
+                        <div class="sl-wrap"><input type="range" min="70" max="99" value="92"
+                                oninput="this.nextElementSibling.textContent='≥'+this.value+'%'"><span
+                                class="sl-val">≥92%</span></div>
+                    </div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">G-Force Sensitivity</div>
+                            <div class="sr-desc">IMU snatch/fall detection</div>
+                        </div>
+                        <div class="sl-wrap"><input type="range" min="1" max="10" value="6"
+                                oninput="this.nextElementSibling.textContent=this.value+'G'"><span
+                                class="sl-val">6G</span></div>
+                    </div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">LoRa Beacon Interval</div>
+                            <div class="sr-desc">SOS packet rate in emergency mode</div>
+                        </div>
+                        <div class="sl-wrap"><input type="range" min="10" max="60" value="30"
+                                oninput="this.nextElementSibling.textContent=this.value+'s'"><span
+                                class="sl-val">30s</span></div>
+                    </div>
+                </div>
+                <div class="set-card">
+                    <div class="set-title">STEALTH FEATURES</div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">Decoy Mode</div>
+                            <div class="sr-desc">Silent recording — no LED or sound</div>
+                        </div>
+                        <div class="tog on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">Fake Call</div>
+                            <div class="sr-desc">BLE triggers phone ring as cover</div>
+                        </div>
+                        <div class="tog on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">Haptic Acknowledgment</div>
+                            <div class="sr-desc">Silent vibration confirms delivery</div>
+                        </div>
+                        <div class="tog on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">LED Suppression</div>
+                            <div class="sr-desc">Disable all visible indicators</div>
+                        </div>
+                        <div class="tog on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">Tamper Detection</div>
+                            <div class="sr-desc">GPS broadcast on forced removal</div>
+                        </div>
+                        <div class="tog on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                </div>
+                <div class="set-card">
+                    <div class="set-title">COMMS FAILOVER</div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">Auto LTE → LoRa</div>
+                            <div class="sr-desc">On LTE RSSI below threshold</div>
+                        </div>
+                        <div class="tog on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">Auto LoRa → Satellite</div>
+                            <div class="sr-desc">CC660D-LS final fallback</div>
+                        </div>
+                        <div class="tog on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">PSRAM Buffer Retransmit</div>
+                            <div class="sr-desc">Auto-replay on channel restore</div>
+                        </div>
+                        <div class="tog on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                </div>
+                <div class="set-card">
+                    <div class="set-title">AI MODEL</div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">Edge Inference</div>
+                            <div class="sr-desc">1D-CNN int8 · &lt;100KB · &lt;50ms</div>
+                        </div>
+                        <div class="tog on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">Dual-Trigger Logic</div>
+                            <div class="sr-desc">Fire on simultaneous IMU + Mic</div>
+                        </div>
+                        <div class="tog on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                    <div class="set-row">
+                        <div>
+                            <div class="sr-name">Claude API Reports</div>
+                            <div class="sr-desc">Auto-generate incident + court docs</div>
+                        </div>
+                        <div class="tog on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /workspace -->
+
+    <script>
+        /* Clock */
+        function tick() {
+            const d = new Date();
+            document.getElementById('clock').textContent =
+                d.toLocaleTimeString('en-IN', { hour12: false }) + ' IST';
+        }
+        tick(); setInterval(tick, 1000);
+
+        /* Nav */
+        function show(id, el) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById('sec-' + id).classList.add('active');
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            if (el) el.classList.add('active');
+        }
+
+        /* Device table */
+        const devices = [
+            { id: 'SG-007', status: 'SOS', bat: 68, comms: 'LTE', gps: '±1.9m', fw: 'v2.4.1', last: 'NOW' },
+            { id: 'SG-019', status: 'ALERT', bat: 22, comms: 'LoRa', gps: '±2.1m', fw: 'v2.3.9', last: 'NOW' },
+            { id: 'SG-012', status: 'ONLINE', bat: 91, comms: 'LTE', gps: '±2.0m', fw: 'v2.4.1', last: '14:31' },
+            { id: 'SG-003', status: 'ONLINE', bat: 55, comms: 'LTE', gps: '±1.8m', fw: 'v2.4.1', last: '14:30' },
+            { id: 'SG-001', status: 'ONLINE', bat: 84, comms: 'LTE', gps: '±1.7m', fw: 'v2.4.1', last: '14:28' },
+            { id: 'SG-024', status: 'ONLINE', bat: 100, comms: 'LTE', gps: '±1.8m', fw: 'v2.4.1', last: '14:15' },
+            { id: 'SG-015', status: 'LOW BAT', bat: 11, comms: 'Sat', gps: '±2.4m', fw: 'v2.3.8', last: '14:02' },
+            { id: 'SG-008', status: 'OFFLINE', bat: 0, comms: '—', gps: '—', fw: 'v2.3.9', last: '12:44' },
+            { id: 'SG-011', status: 'ONLINE', bat: 77, comms: 'LTE', gps: '±1.9m', fw: 'v2.4.1', last: '14:31' },
+            { id: 'SG-016', status: 'ONLINE', bat: 62, comms: 'LTE', gps: '±2.0m', fw: 'v2.4.0', last: '14:29' },
+        ];
+        const SC = { SOS: '#ff3b3b', ALERT: '#ffaa00', ONLINE: '#00ff88', 'LOW BAT': '#ffaa00', OFFLINE: '#4a5568' };
+        const CC = { LTE: '#00d4ff', LoRa: '#00ff88', Sat: '#ffaa00', '—': '#4a5568' };
+
+        const tbody = document.getElementById('dev-tbody');
+        devices.forEach(d => {
+            const bc = d.bat > 40 ? '#00ff88' : d.bat > 15 ? '#ffaa00' : '#ff3b3b';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td class="mono">${d.id}</td><td class="mono" style="color:${SC[d.status]};font-weight:700">${d.status}</td><td><div class="bat-bar-wrap"><div class="bat-bar"><div class="bat-fill" style="width:${d.bat}%;background:${bc}"></div></div><span class="mono" style="font-size:11px">${d.bat}%</span></div></td><td class="mono" style="color:${CC[d.comms]}">${d.comms}</td><td class="mono">${d.gps}</td><td class="mono">${d.fw}</td><td class="mono" style="color:#4a5568">${d.last}</td>`;
+            tbody.appendChild(tr);
+        });
+
+        /* Fleet sidebar */
+        const fleetEl = document.getElementById('fleet-list');
+        devices.slice(0, 8).forEach(d => {
+            const bc = d.bat > 40 ? '#00ff88' : d.bat > 15 ? '#ffaa00' : '#ff3b3b';
+            const row = document.createElement('div');
+            row.className = 'fleet-row';
+            row.innerHTML = `<span class="fr-id" style="color:${SC[d.status]}">${d.id}</span><span class="fr-bat" style="color:${bc}">${d.bat}%</span><span class="fr-path" style="color:${CC[d.comms]}">${d.comms}</span><span class="fr-status" style="color:${SC[d.status]}">${d.status}</span>`;
+            row.onclick = () => showPopup(d);
+            fleetEl.appendChild(row);
+        });
+
+        function showPopup(d) {
+            document.getElementById('dp-id').textContent = d.id;
+            document.getElementById('dp-status').textContent = d.status;
+            document.getElementById('dp-status').style.color = SC[d.status];
+            document.getElementById('dp-bat').textContent = d.bat + '%';
+            document.getElementById('dp-comms').textContent = d.comms;
+            document.getElementById('dp-gps').textContent = d.gps;
+            document.getElementById('dp-time').textContent = d.last;
+            const sos = document.getElementById('dp-sos-btn');
+            sos.style.display = (d.status === 'SOS' || d.status === 'ALERT') ? '' : 'none';
+            document.getElementById('device-popup').style.display = 'block';
+        }
+
+        /* ═══════════════════════════════════
+           PALANTIR MAP — Canvas renderer
+        ═══════════════════════════════════ */
+        const canvas = document.getElementById('palantir');
+        const ctx = canvas.getContext('2d');
+        const LAYERS = { heatmap: true, mesh: true, trails: true };
+
+        function toggleLayer(k, btn) {
+            LAYERS[k] = !LAYERS[k];
+            btn.classList.toggle('on', LAYERS[k]);
+        }
+
+        const mapDevices = [
+            { id: 'SG-007', x: 0.31, y: 0.47, status: 'SOS', lat: 28.6139, lng: 77.2090, trail: [{ x: 0.20, y: 0.64 }, { x: 0.24, y: 0.59 }, { x: 0.28, y: 0.53 }, { x: 0.30, y: 0.50 }] },
+            { id: 'SG-019', x: 0.54, y: 0.59, status: 'ALERT', lat: 28.6201, lng: 77.2155, trail: [{ x: 0.57, y: 0.73 }, { x: 0.57, y: 0.68 }, { x: 0.55, y: 0.63 }] },
+            { id: 'SG-012', x: 0.57, y: 0.33, status: 'ONLINE', lat: 28.6180, lng: 77.2200, trail: [] },
+            { id: 'SG-003', x: 0.75, y: 0.67, status: 'ONLINE', lat: 28.6090, lng: 77.2310, trail: [] },
+            { id: 'SG-001', x: 0.87, y: 0.21, status: 'ONLINE', lat: 28.6250, lng: 77.2400, trail: [] },
+            { id: 'SG-015', x: 0.14, y: 0.27, status: 'LOW BAT', lat: 28.6300, lng: 77.1980, trail: [] },
+            { id: 'SG-008', x: 0.41, y: 0.81, status: 'OFFLINE', lat: 28.6050, lng: 77.2120, trail: [] },
+            { id: 'SG-024', x: 0.69, y: 0.17, status: 'ONLINE', lat: 28.6280, lng: 77.2270, trail: [] },
+        ];
+
+        let W, H;
+
+        function resize() {
+            const wrap = document.getElementById('map-canvas');
+            W = canvas.width = wrap.clientWidth;
+            H = canvas.height = wrap.clientHeight;
+        }
+        resize();
+        window.addEventListener('resize', () => { cityBuildings = null; resize(); });
+
+        function p(d) { return { x: d.x * W, y: d.y * H }; }
+
+        /* ── Pre-generate city layout once (stable across frames) ── */
+        let cityBuildings = null;
+
+        function buildCity() {
+            let seed = 7919;
+            function rnd() {
+                seed = (seed * 1664525 + 1013904223) >>> 0;
+                return seed / 0xffffffff;
+            }
+            const blockDefs = [
+                [0.006,0.006,0.088,0.195, 1, 0.70], [0.102,0.006,0.125,0.195, 2, 0.85],
+                [0.248,0.006,0.140,0.195, 2, 0.92], [0.412,0.006,0.140,0.195, 1, 0.75],
+                [0.578,0.006,0.140,0.195, 1, 0.70], [0.738,0.006,0.120,0.195, 2, 0.80],
+                [0.882,0.006,0.112,0.195, 1, 0.65],
+                [0.006,0.225,0.088,0.125, 2, 0.85], [0.102,0.225,0.125,0.125, 2, 0.90],
+                [0.248,0.225,0.140,0.125, 2, 0.88], [0.412,0.225,0.140,0.125, 2, 0.90],
+                [0.738,0.225,0.120,0.125, 1, 0.70], [0.882,0.225,0.112,0.125, 1, 0.72],
+                [0.006,0.370,0.088,0.120, 0, 0.65], [0.102,0.370,0.125,0.120, 1, 0.78],
+                [0.248,0.370,0.140,0.120, 2, 0.88], [0.412,0.370,0.140,0.120, 2, 0.85],
+                [0.578,0.370,0.138,0.120, 1, 0.72], [0.738,0.370,0.120,0.120, 1, 0.70],
+                [0.882,0.370,0.112,0.120, 0, 0.60],
+                [0.006,0.512,0.088,0.105, 1, 0.70], [0.102,0.512,0.125,0.105, 1, 0.75],
+                [0.248,0.512,0.140,0.105, 1, 0.72], [0.470,0.512,0.085,0.105, 2, 0.82],
+                [0.578,0.512,0.138,0.105, 1, 0.68], [0.738,0.512,0.120,0.105, 0, 0.62],
+                [0.882,0.512,0.112,0.105, 1, 0.70],
+                [0.102,0.638,0.125,0.118, 1, 0.70], [0.248,0.638,0.140,0.118, 0, 0.60],
+                [0.412,0.638,0.140,0.118, 1, 0.72], [0.578,0.638,0.138,0.118, 1, 0.70],
+                [0.882,0.638,0.112,0.118, 0, 0.62],
+                [0.102,0.778,0.125,0.092, 0, 0.60], [0.248,0.778,0.140,0.092, 1, 0.68],
+                [0.412,0.778,0.140,0.092, 1, 0.65], [0.578,0.778,0.138,0.092, 0, 0.60],
+                [0.738,0.778,0.120,0.092, 1, 0.68], [0.882,0.778,0.112,0.092, 0, 0.58],
+                [0.102,0.892,0.125,0.102, 0, 0.52], [0.248,0.892,0.140,0.102, 1, 0.62],
+                [0.412,0.892,0.140,0.102, 0, 0.55], [0.578,0.892,0.138,0.102, 1, 0.60],
+                [0.738,0.892,0.120,0.102, 0, 0.52], [0.882,0.892,0.112,0.102, 0, 0.55],
+            ];
+            const baseShades = ['#0d1520','#111a28','#151f2e'];
+            const roofPalette = [
+                ['#141e2c','#182236','#1a2640'],
+                ['#172030','#1b2636','#1e2b3e'],
+                ['#1c2840','#202e48','#243450'],
+            ];
+            const buildings = [];
+            blockDefs.forEach(([nx,ny,nw,nh,shade,density]) => {
+                buildings.push({ type:'block', nx,ny,nw,nh, fill:baseShades[shade] });
+                const cols = Math.max(1, Math.floor(nw * 1000 / 15));
+                const rows = Math.max(1, Math.floor(nh * 1000 / 15));
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        if (rnd() > density) continue;
+                        const pad = 0.12 + rnd()*0.08;
+                        const bx  = nx + (c/cols)*nw + pad*nw/cols;
+                        const by  = ny + (r/rows)*nh + pad*nh/rows;
+                        const bw  = (nw/cols)*(0.74 - rnd()*0.08);
+                        const bh  = (nh/rows)*(0.74 - rnd()*0.08);
+                        const pal = roofPalette[shade];
+                        buildings.push({ type:'bld', nx:bx,ny:by,nw:bw,nh:bh, fill:pal[Math.floor(rnd()*pal.length)] });
+                    }
+                }
+            });
+            return buildings;
+        }
+
+        const ROADS = [
+            { pts:[[0,0.365],[1,0.365]], w:14, t:'hw' },
+            { pts:[[0,0.630],[1,0.630]], w:12, t:'hw' },
+            { pts:[[0.245,0],[0.245,1]], w:14, t:'hw' },
+            { pts:[[0.575,0],[0.575,1]], w:12, t:'hw' },
+            { pts:[[0,0.220],[1,0.220]], w:9,  t:'art' },
+            { pts:[[0,0.508],[1,0.508]], w:9,  t:'art' },
+            { pts:[[0,0.778],[1,0.778]], w:9,  t:'art' },
+            { pts:[[0.100,0],[0.100,1]], w:9,  t:'art' },
+            { pts:[[0.410,0],[0.410,1]], w:9,  t:'art' },
+            { pts:[[0.735,0],[0.735,1]], w:9,  t:'art' },
+            { pts:[[0.880,0],[0.880,1]], w:9,  t:'art' },
+            { pts:[[0.245,0.630],[0.575,0.365]], w:8, t:'art' },
+            { pts:[[0,0.292],[1,0.292]],  w:6, t:'sec' },
+            { pts:[[0,0.438],[1,0.438]],  w:5, t:'sec' },
+            { pts:[[0,0.560],[1,0.560]],  w:5, t:'sec' },
+            { pts:[[0,0.698],[1,0.698]],  w:5, t:'sec' },
+            { pts:[[0,0.852],[1,0.852]],  w:5, t:'sec' },
+            { pts:[[0.050,0],[0.050,1]],  w:5, t:'sec' },
+            { pts:[[0.175,0],[0.175,1]],  w:6, t:'sec' },
+            { pts:[[0.325,0],[0.325,1]],  w:6, t:'sec' },
+            { pts:[[0.490,0],[0.490,1]],  w:5, t:'sec' },
+            { pts:[[0.655,0],[0.655,1]],  w:5, t:'sec' },
+            { pts:[[0.800,0],[0.800,1]],  w:5, t:'sec' },
+            { pts:[[0.940,0],[0.940,1]],  w:5, t:'sec' },
+            { pts:[[0,0.900],[1,0.900]],  w:3, t:'loc' },
+            { pts:[[0.130,0],[0.130,1]],  w:3, t:'loc' },
+        ];
+        const ROAD_COL = { hw:'#1f2e42', art:'#192538', sec:'#13202e', loc:'#101828' };
+
+        const PARKS = [
+            { nx:0.578,ny:0.225,nw:0.145,nh:0.130 },
+            { nx:0.065,ny:0.768,nw:0.095,nh:0.082 },
+            { nx:0.738,ny:0.640,nw:0.118,nh:0.092 },
+            { nx:0.412,ny:0.500,nw:0.058,nh:0.055 },
+            { nx:0.862,ny:0.205,nw:0.076,nh:0.058 },
+        ];
+
+        function drawCityBase() {
+            // 1. Ground
+            ctx.fillStyle = '#080c13';
+            ctx.fillRect(0, 0, W, H);
+
+            // 2. River
+            ctx.beginPath();
+            ctx.moveTo(0, 0.575*H);
+            ctx.bezierCurveTo(0.07*W,0.610*H, 0.05*W,0.695*H, 0.03*W,0.770*H);
+            ctx.bezierCurveTo(0.01*W,0.840*H, 0.06*W,0.910*H, 0,0.960*H);
+            ctx.lineTo(0,H); ctx.closePath();
+            ctx.fillStyle = '#07121f'; ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(0.018*W,0.590*H);
+            ctx.bezierCurveTo(0.055*W,0.650*H, 0.038*W,0.720*H, 0.018*W,0.790*H);
+            ctx.bezierCurveTo(0.005*W,0.850*H, 0.040*W,0.920*H, 0.010*W,0.955*H);
+            ctx.strokeStyle='rgba(0,140,210,0.06)'; ctx.lineWidth=7; ctx.stroke();
+
+            // 3. Parks
+            PARKS.forEach(pk => {
+                ctx.fillStyle = '#06100c';
+                ctx.fillRect(pk.nx*W, pk.ny*H, pk.nw*W, pk.nh*H);
+                ctx.fillStyle = '#09160f';
+                for (let i = 0; i < 18; i++) {
+                    const tx = (pk.nx + Math.random()*pk.nw)*W;
+                    const ty = (pk.ny + Math.random()*pk.nh)*H;
+                    ctx.beginPath(); ctx.arc(tx,ty,2+Math.random()*4,0,Math.PI*2); ctx.fill();
+                }
+                ctx.strokeStyle='rgba(20,35,25,0.8)'; ctx.lineWidth=1.5;
+                ctx.beginPath();
+                ctx.moveTo((pk.nx+pk.nw*0.1)*W,(pk.ny+pk.nh*0.5)*H);
+                ctx.lineTo((pk.nx+pk.nw*0.9)*W,(pk.ny+pk.nh*0.5)*H);
+                ctx.stroke();
+            });
+
+            // 4. Building blocks + footprints
+            if (!cityBuildings) cityBuildings = buildCity();
+            cityBuildings.forEach(b => {
+                if (b.type === 'block') {
+                    ctx.fillStyle = b.fill;
+                    ctx.fillRect(b.nx*W+0.5, b.ny*H+0.5, b.nw*W-1, b.nh*H-1);
+                } else {
+                    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                    ctx.fillRect(b.nx*W+1.5, b.ny*H+1.5, b.nw*W, b.nh*H);
+                    ctx.fillStyle = b.fill;
+                    ctx.fillRect(b.nx*W, b.ny*H, b.nw*W, b.nh*H);
+                }
+            });
+
+            // 5. Road casings
+            ROADS.forEach(r => {
+                ctx.beginPath();
+                ctx.strokeStyle='rgba(0,0,0,0.65)'; ctx.lineWidth=r.w+2.5;
+                ctx.lineJoin='round'; ctx.lineCap='round';
+                ctx.moveTo(r.pts[0][0]*W, r.pts[0][1]*H);
+                r.pts.slice(1).forEach(pt => ctx.lineTo(pt[0]*W, pt[1]*H));
+                ctx.stroke();
+            });
+            // 6. Road surfaces
+            ROADS.forEach(r => {
+                ctx.beginPath();
+                ctx.strokeStyle=ROAD_COL[r.t]; ctx.lineWidth=r.w;
+                ctx.lineJoin='round'; ctx.lineCap='round';
+                ctx.moveTo(r.pts[0][0]*W, r.pts[0][1]*H);
+                r.pts.slice(1).forEach(pt => ctx.lineTo(pt[0]*W, pt[1]*H));
+                ctx.stroke();
+            });
+            // 7. Road centre-line markings (highways + arterials)
+            ctx.setLineDash([10,12]);
+            ROADS.filter(r => r.t==='hw'||r.t==='art').forEach(r => {
+                ctx.beginPath();
+                ctx.strokeStyle='rgba(255,220,100,0.055)'; ctx.lineWidth=0.7;
+                ctx.moveTo(r.pts[0][0]*W, r.pts[0][1]*H);
+                r.pts.slice(1).forEach(pt => ctx.lineTo(pt[0]*W, pt[1]*H));
+                ctx.stroke();
+            });
+            ctx.setLineDash([]);
+            // 8. Intersection squares
+            const hCross=[0.220,0.292,0.365,0.438,0.508,0.560,0.630,0.698,0.778,0.852,0.900];
+            const vCross=[0.050,0.100,0.130,0.175,0.245,0.325,0.410,0.490,0.575,0.655,0.735,0.800,0.880,0.940];
+            ctx.fillStyle='#1e2c3c';
+            hCross.forEach(hy => vCross.forEach(vx => ctx.fillRect(vx*W-4,hy*H-4,8,8)));
+            // 9. Faint Palantir coordinate grid overlay
+            ctx.strokeStyle='rgba(0,212,255,0.025)'; ctx.lineWidth=0.5;
+            for (let v=0; v<=1; v+=0.125) {
+                ctx.beginPath(); ctx.moveTo(v*W,0); ctx.lineTo(v*W,H); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0,v*H); ctx.lineTo(W,v*H); ctx.stroke();
+            }
+        }
+
+        function drawHeatmap() {
+            if (!LAYERS.heatmap) return;
+            function heat(cx, cy, rx, ry, color, alpha) {
+                const gx = ctx.createRadialGradient(cx * W, cy * H, 0, cx * W, cy * H, rx * Math.min(W, H));
+                gx.addColorStop(0, color.replace('A', alpha + ''));
+                gx.addColorStop(1, color.replace('A', '0'));
+                ctx.fillStyle = gx;
+                ctx.save(); ctx.scale(1, ry / rx);
+                ctx.beginPath(); ctx.arc(cx * W, cy * H * (rx / ry), rx * Math.min(W, H), 0, Math.PI * 2);
+                ctx.restore(); ctx.fill();
+            }
+            heat(0.31, 0.47, 0.19, 0.19, 'rgba(255,59,59,A)', '0.22');
+            heat(0.54, 0.59, 0.13, 0.13, 'rgba(255,170,0,A)', '0.18');
+        }
+
+        function drawMesh() {
+            if (!LAYERS.mesh) return;
+            const online = mapDevices.filter(d => d.status !== 'OFFLINE');
+            const meshR = 0.155 * Math.min(W, H);
+
+            online.forEach(d => {
+                const pt = p(d);
+                // Range circle
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, meshR, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(0,212,255,0.10)';
+                ctx.setLineDash([5, 5]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+                // Range fill
+                const rg = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, meshR);
+                rg.addColorStop(0, 'rgba(0,212,255,0.025)'); rg.addColorStop(1, 'rgba(0,212,255,0)');
+                ctx.fillStyle = rg;
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, meshR, 0, Math.PI * 2); ctx.fill();
+            });
+
+            // Mesh connection lines
+            for (let i = 0; i < online.length; i++) {
+                for (let j = i + 1; j < online.length; j++) {
+                    const a = p(online[i]), b = p(online[j]);
+                    if (Math.hypot(a.x - b.x, a.y - b.y) < meshR * 2) {
+                        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+                        ctx.strokeStyle = 'rgba(0,212,255,0.08)'; ctx.lineWidth = 0.7; ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function drawTrails() {
+            if (!LAYERS.trails) return;
+            mapDevices.forEach(d => {
+                if (!d.trail.length) return;
+                const col = d.status === 'SOS' ? 'rgba(255,59,59,0.55)' : d.status === 'ALERT' ? 'rgba(255,170,0,0.55)' : 'rgba(0,212,255,0.45)';
+                ctx.beginPath(); ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = col; ctx.lineWidth = 1.2;
+                ctx.moveTo(d.trail[0].x * W, d.trail[0].y * H);
+                d.trail.forEach(pt => ctx.lineTo(pt.x * W, pt.y * H));
+                const end = p(d); ctx.lineTo(end.x, end.y);
+                ctx.stroke(); ctx.setLineDash([]);
+            });
+        }
+
+        function drawNodes() {
+            const t = Date.now() / 1000;
+            mapDevices.forEach(d => {
+                const pt = p(d);
+                const palette = { SOS: [255, 59, 59], ALERT: [255, 170, 0], ONLINE: [0, 212, 255], 'LOW BAT': [255, 170, 0], OFFLINE: [74, 85, 104] };
+                const [r, g, b] = palette[d.status] || palette.OFFLINE;
+                const baseR = d.status === 'SOS' ? 10 : d.status === 'ALERT' ? 8 : 6;
+
+                // Animated SOS/ALERT ring
+                if (d.status === 'SOS' || d.status === 'ALERT') {
+                    const phase = (t % (d.status === 'SOS' ? 1.2 : 1.8)) / (d.status === 'SOS' ? 1.2 : 1.8);
+                    const ringR = baseR + phase * 30;
+                    ctx.beginPath(); ctx.arc(pt.x, pt.y, ringR, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(${r},${g},${b},${(1 - phase) * 0.7})`;
+                    ctx.lineWidth = 1.5; ctx.stroke();
+                    // Second ring for SOS
+                    if (d.status === 'SOS') {
+                        const p2 = ((t + 0.6) % 1.2) / 1.2;
+                        const r2 = baseR + p2 * 30;
+                        ctx.beginPath(); ctx.arc(pt.x, pt.y, r2, 0, Math.PI * 2);
+                        ctx.strokeStyle = `rgba(${r},${g},${b},${(1 - p2) * 0.4})`;
+                        ctx.lineWidth = 1; ctx.stroke();
+                    }
+                }
+
+                // Glow
+                const glow = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, baseR * 3);
+                glow.addColorStop(0, `rgba(${r},${g},${b},0.3)`);
+                glow.addColorStop(1, `rgba(${r},${g},${b},0)`);
+                ctx.fillStyle = glow;
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, baseR * 3, 0, Math.PI * 2); ctx.fill();
+
+                // Core
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, baseR, 0, Math.PI * 2);
+                ctx.fillStyle = `rgb(${r},${g},${b})`; ctx.fill();
+                // Inner highlight
+                ctx.beginPath(); ctx.arc(pt.x, pt.y, baseR * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
+
+                // Label
+                ctx.fillStyle = `rgba(${r},${g},${b},0.95)`;
+                ctx.font = `bold 10px 'Courier New',monospace`;
+                ctx.textAlign = 'center';
+                ctx.fillText(d.id, pt.x, pt.y + baseR + 14);
+                if (d.status === 'SOS' || d.status === 'ALERT') {
+                    ctx.font = `9px 'Courier New',monospace`;
+                    ctx.fillStyle = `rgba(${r},${g},${b},0.75)`;
+                    ctx.fillText('⚠ ' + d.status, pt.x, pt.y + baseR + 24);
+                }
+            });
+        }
+
+        function frame() {
+            ctx.clearRect(0, 0, W, H);
+            drawCityBase();
+            drawHeatmap();
+            drawMesh();
+            drawTrails();
+            drawNodes();
+            requestAnimationFrame(frame);
+        }
+        frame();
+
+        /* Map mouse interactions */
+        canvas.addEventListener('mousemove', e => {
+            const r = canvas.getBoundingClientRect();
+            const mx = e.clientX - r.left, my = e.clientY - r.top;
+            const lat = (28.64 - (my / H) * 0.08).toFixed(4);
+            const lng = (77.18 + (mx / W) * 0.08).toFixed(4);
+            document.getElementById('cursor-coords').textContent = `${lat}°N  ${lng}°E`;
+            canvas.style.cursor = mapDevices.some(d => Math.hypot(mx - d.x * W, my - d.y * H) < 16) ? 'pointer' : 'crosshair';
+        });
+        canvas.addEventListener('click', e => {
+            const r = canvas.getBoundingClientRect();
+            const mx = e.clientX - r.left, my = e.clientY - r.top;
+            const hit = mapDevices.find(d => Math.hypot(mx - d.x * W, my - d.y * H) < 16);
+            if (hit) showPopup(hit);
+        });
+        canvas.addEventListener('mouseleave', () => {
+            document.getElementById('cursor-coords').textContent = 'HOVER MAP FOR COORDS';
+        });
+    </script>
+</body>
+
+</html>
